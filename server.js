@@ -11,11 +11,15 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static('public'));
 
+/* Initialize PostgreSQL Connection Pool with SSL bypass configuration */
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
-    ssl: { rejectUnauthorized: false }
+    ssl: {
+        rejectUnauthorized: false
+    }
 });
 
+/* Test Database Connectivity immediately on startup */
 pool.connect((err, client, release) => {
     if (err) {
         return console.error('❌ Database Connection Error:', err.stack);
@@ -24,7 +28,9 @@ pool.connect((err, client, release) => {
     release();
 });
 
-/* 1. USER REGISTRATION API */
+/* ==========================================
+   1. USER REGISTRATION API
+   ========================================== */
 app.post('/api/auth/register', async (req, res) => {
     const { username, password, role } = req.body;
     if (!username || !password) {
@@ -47,7 +53,9 @@ app.post('/api/auth/register', async (req, res) => {
     }
 });
 
-/* 2. USER LOGIN API */
+/* ==========================================
+   2. USER LOGIN API
+   ========================================== */
 app.post('/api/auth/login', async (req, res) => {
     const { username, password } = req.body;
     if (!username || !password) {
@@ -72,7 +80,9 @@ app.post('/api/auth/login', async (req, res) => {
     }
 });
 
-/* 3. PRODUCTS API */
+/* ==========================================
+   3. PRODUCTS API
+   ========================================== */
 app.get('/api/products', async (req, res) => {
     try {
         const result = await pool.query('SELECT * FROM products ORDER BY id DESC');
@@ -97,7 +107,9 @@ app.post('/api/products', async (req, res) => {
     }
 });
 
-/* 4. ORDERS API */
+/* ==========================================
+   4. ORDERS API
+   ========================================== */
 app.post('/api/orders', async (req, res) => {
     const { user_id, total_amount, status } = req.body;
     try {
@@ -124,6 +136,7 @@ app.get('/api/orders', async (req, res) => {
     }
 });
 
+/* Base Server Check Route */
 app.get('/', (req, res) => {
     res.send('🚀 Backend Server Running Successfully!');
 });
