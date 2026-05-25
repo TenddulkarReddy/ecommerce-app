@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>E-Commerce Store Layout</title>
+    <style>
+        :root {
+            --primary: #4f46e5;
+            --primary-hover: #4338ca;
+            --success: #10b981;
+            --success-hover: #059669;
+            --bg-main: #f8fafc;
+            --bg-card: #ffffff;
+            --text-dark: #0f172a;
+            --text-muted: #64748b;
+            --border: #e2e8f0;
+            --admin-bg: #fff7ed;
+            --admin-border: #fed7aa;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-main);
+            color: var(--text-dark);
+        }
+
+        /* Top Navbar */
+        .navbar {
+            background-color: var(--bg-card);
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+
+        .navbar h2 {
+            margin: 0;
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: var(--primary);
+            letter-spacing: -0.5px;
+        }
+
+        .nav-right {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        #auth-status {
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: var(--text-muted);
+        }
+
+        /* Container & Layout layouts */
+        .main-container {
+            max-width: 1200px;
+            margin: 30px auto;
+            padding: 0 20px;
+        }
+
+        .hidden { display: none !important; }
+
+        /* Auth Card Component */
+        .auth-card {
+            background: var(--bg-card);
+            max-width: 400px;
+            margin: 60px auto;
+            padding: 30px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+        }
+
+        .auth-card h3 {
+            margin-top: 0;
+            margin-bottom: 20px;
+            font-size: 1.3rem;
+            text-align: center;
+        }
+
+        /* Form Controls */
+        label {
+            display: block;
+            margin-bottom: 6px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-muted);
+        }
+
+        input, textarea, select {
+            width: 100%;
+            padding: 10px 14px;
+            margin-bottom: 16px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            box-sizing: border-box;
+            font-family: inherit;
+            font-size: 0.95rem;
+            transition: border-color 0.2s;
+        }
+
+        input:focus, textarea:focus, select:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        /* Buttons layout */
+        button {
+            width: 100%;
+            padding: 11px 16px;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-bottom: 10px;
+        }
+
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-primary:hover { background: var(--primary-hover); }
+        .btn-secondary { background: #f1f5f9; color: var(--text-dark); border: 1px solid var(--border); }
+        .btn-secondary:hover { background: #e2e8f0; }
+        .btn-danger { background: #ef4444; color: white; width: auto; padding: 8px 14px; font-size: 0.85rem; }
+        .btn-danger:hover { background: #dc2626; }
+
+        /* Dashboard Grid Layout */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 30px;
+        }
+
+        @media (max-width: 768px) {
+            .dashboard-grid { grid-template-columns: 1fr; }
+        }
+
+        .section-card {
+            background: var(--bg-card);
+            padding: 24px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+            margin-bottom: 25px;
+        }
+
+        .section-card h3 { margin-top: 0; margin-bottom: 20px; font-size: 1.2rem; border-bottom: 2px solid #f1f5f9; padding-bottom: 10px;}
+
+        /* Product Grid / Cards layout */
+        .product-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+            gap: 20px;
+        }
+
+        .product-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            padding: 20px;
+            border-radius: 10px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.01);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .product-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05);
+        }
+
+        .product-card h4 { margin: 0 0 8px 0; font-size: 1.1rem; }
+        .product-card .price { color: var(--primary); font-weight: 700; font-size: 1.2rem; margin-bottom: 10px; }
+        .product-card p { font-size: 0.9rem; color: var(--text-muted); margin: 0 0 14px 0; line-height: 1.4; }
+        .product-card small { font-size: 0.8rem; color: #94a3b8; }
+
+        /* Cart styles */
+        .cart-list { list-style: none; padding: 0; margin: 0 0 15px 0; }
+        .cart-list li { padding: 10px 0; border-bottom: 1px dashed var(--border); font-size: 0.95rem; display: flex; justify-content: space-between; }
+        .total-box { font-size: 1.1rem; display: flex; justify-content: space-between; padding: 15px 0; margin-top: 10px; border-top: 2px solid var(--border); }
+
+        /* Admin Section Styling */
+        .admin-section { background-color: var(--admin-bg); border-color: var(--admin-border); }
+        .admin-section h3 { border-bottom-color: var(--admin-border); }
+        .order-row { background: white; padding: 12px 16px; border-radius: 8px; border: 1px solid var(--border); margin-bottom: 10px; font-size: 0.9rem; }
+        .badge { background: #dbeafe; color: #1e40af; padding: 3px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; }
+    </style>
+</head>
+<body>
+
+    <nav class="navbar">
+        <h2>⚡ SwiftStore</h2>
+        <div class="nav-right">
+            <span id="auth-status">Not Logged In</span>
+            <button id="logout-btn" class="btn-danger hidden" onclick="logout()">Logout</button>
+        </div>
+    </nav>
+
+    <div class="main-container">
+
+        <div id="auth-form" class="auth-card">
+            <h3>Welcome Back</h3>
+            <label for="username">Username</label>
+            <input type="text" id="username" placeholder="Enter your username">
+            
+            <label for="password">Password</label>
+            <input type="password" id="password" placeholder="••••••••">
+            
+            <label for="role">Account Type</label>
+            <select id="role">
+                <option value="User">Customer / Shopper</option>
+                <option value="Admin">Store Manager (Admin)</option>
+            </select>
+            
+            <button class="btn-primary" onclick="login()">Sign In</button>
+            <button class="btn-secondary" onclick="register()">Create New Account</button>
+        </div>
+
+        <div id="store-section" class="dashboard-grid hidden">
+            
+            <div>
+                <div id="admin-section" class="section-card admin-section hidden">
+                    <h3>🛠️ Admin Management Dashboard</h3>
+                    <h4 style="margin-top:0; margin-bottom:10px; color:#c2410c;">Deploy New Inventory Item</h4>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                        <div>
+                            <label>Product Title</label>
+                            <input type="text" id="p-name" placeholder="e.g. Wireless Mouse">
+                        </div>
+                        <div>
+                            <label>Retail Valuation Price ($)</label>
+                            <input type="number" id="p-price" placeholder="29.99">
+                        </div>
+                    </div>
+                    
+                    <label>Item Description</label>
+                    <textarea id="p-desc" rows="2" placeholder="Provide features, sizing specs, or color descriptions..."></textarea>
+                    
+                    <label>Warehouse Allotted Stock Count</label>
+                    <input type="number" id="p-stock" placeholder="150">
+                    
+                    <button class="btn-primary" style="background:#ea580c;" onclick="addProduct()">Publish To Digital Catalog</button>
+
+                    <h4 style="margin-top:25px; margin-bottom:10px; color:#c2410c;">Incoming Client Order Traffic</h4>
+                    <div id="admin-orders"></div>
+                </div>
+
+                <div class="section-card">
+                    <h3>Explore Available Inventory</h3>
+                    <div id="product-list" class="product-grid"></div>
+                </div>
+            </div>
+
+            <div>
+                <div class="section-card" style="position: sticky; top: 20px;">
+                    <h3>Shopping Cart Details</h3>
+                    <div id="cart-details">Your canvas is empty! Add products below to compile a real-world checkout sequence.</div>
+                    <button id="checkout-btn" class="btn-primary hidden" style="margin-top: 15px;" onclick="checkout()">Finalize Payment & Order</button>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
