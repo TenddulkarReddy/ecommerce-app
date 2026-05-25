@@ -1,4 +1,6 @@
-const API_URL = 'http://localhost:3000/api';
+const API_URL = 'https://ecommerce-app-backend-fmcl.onrender.com/api';
+
+
 let cart = [];
 let token = localStorage.getItem('token');
 let role = localStorage.getItem('role');
