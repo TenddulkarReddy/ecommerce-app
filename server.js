@@ -3,13 +3,15 @@ const cors = require('cors');
 const { Pool } = require('pg');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const path = require('path');
 require('dotenv').config();
 
 const app = express();
 
+// Middleware Configurations
 app.use(cors());
 app.use(express.json());
-app.use(express.static('public'));
+app.use(express.static(path.join(__dirname, 'public')));
 
 /* Initialize PostgreSQL Connection Pool with SSL bypass configuration */
 const pool = new Pool({
@@ -136,9 +138,9 @@ app.get('/api/orders', async (req, res) => {
     }
 });
 
-/* Base Server Check Route */
-app.get('/', (req, res) => {
-    res.send('🚀 Backend Server Running Successfully!');
+/* Route to explicitly serve the index.html frontend homepage */
+app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 const PORT = process.env.PORT || 10000;
