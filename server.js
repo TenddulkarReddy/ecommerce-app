@@ -5,17 +5,25 @@ const { Pool } = require('pg');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const cors = require('cors');
+const path = require('path');
 
 const app = express();
+
+/* ==========================================================================
+   MIDDLEWARE
+   ========================================================================== */
 
 app.use(express.json());
 app.use(cors());
 
-// Serve frontend static files
-app.use(express.static('public'));
+/* ==========================================================================
+   SERVE FRONTEND
+   ========================================================================== */
+
+app.use(express.static(path.join(__dirname, 'public')));
 
 /* ==========================================================================
-   DATABASE CONNECTION (SUPABASE + RENDER)
+   DATABASE CONNECTION
    ========================================================================== */
 
 const pool = new Pool({
@@ -36,10 +44,11 @@ pool.connect()
     });
 
 /* ==========================================================================
-   1. USER REGISTRATION API
+   USER REGISTRATION API
    ========================================================================== */
 
-const registerHandler = async (req, res) => {
+app.post('/api/register', async (req, res) => {
+
     const { username, password, role } = req.body;
 
     if (!username || !password) {
@@ -49,6 +58,7 @@ const registerHandler = async (req, res) => {
     }
 
     try {
+
         let assignedRole = 'User';
 
         if (
@@ -82,7 +92,7 @@ const registerHandler = async (req, res) => {
 
     } catch (error) {
 
-        console.error(error);
+        console.error('REGISTER ERROR:', error);
 
         if (error.code === '23505') {
             return res.status(400).json({
@@ -91,19 +101,16 @@ const registerHandler = async (req, res) => {
         }
 
         res.status(500).json({
-            error: 'Database error during registration.'
+            error: error.message
         });
     }
-};
-
-app.post('/api/register', registerHandler);
-app.post('/api/auth/register', registerHandler);
+});
 
 /* ==========================================================================
-   2. USER LOGIN API
+   USER LOGIN API
    ========================================================================== */
 
-const loginHandler = async (req, res) => {
+app.post('/api/login', async (req, res) => {
 
     const { username, password } = req.body;
 
@@ -124,12 +131,12 @@ const loginHandler = async (req, res) => {
 
         const user = result.rows[0];
 
-        const isValidPassword = await bcrypt.compare(
+        const validPassword = await bcrypt.compare(
             password,
             user.password
         );
 
-        if (!isValidPassword) {
+        if (!validPassword) {
             return res.status(400).json({
                 error: 'Invalid username or password.'
             });
@@ -155,19 +162,16 @@ const loginHandler = async (req, res) => {
 
     } catch (error) {
 
-        console.error(error);
+        console.error('LOGIN ERROR:', error);
 
         res.status(500).json({
-            error: 'Database server error during login.'
+            error: error.message
         });
     }
-};
-
-app.post('/api/login', loginHandler);
-app.post('/api/auth/login', loginHandler);
+});
 
 /* ==========================================================================
-   3. PRODUCTS API
+   PRODUCTS API
    ========================================================================== */
 
 app.get('/api/products', async (req, res) => {
@@ -182,86 +186,17 @@ app.get('/api/products', async (req, res) => {
 
     } catch (error) {
 
-        console.error(error);
+        console.error('PRODUCT FETCH ERROR:', error);
 
         res.status(500).json({
-            error: 'Failed to fetch products.'
-        });
-    }
-});
-
-app.post('/api/products', async (req, res) => {
-
-    const { name, description, price, stock } = req.body;
-
-    try {
-
-        const query = `
-            INSERT INTO products
-            (name, description, price, stock)
-            VALUES ($1, $2, $3, $4)
-            RETURNING *;
-        `;
-
-        const result = await pool.query(query, [
-            name,
-            description,
-            price,
-            stock
-        ]);
-
-        res.status(201).json({
-            message: 'Product added successfully!',
-            product: result.rows[0]
-        });
-
-    } catch (error) {
-
-        console.error(error);
-
-        res.status(500).json({
-            error: 'Failed to create product.'
+            error: error.message
         });
     }
 });
 
 /* ==========================================================================
-   4. ORDERS API
+   ORDERS API
    ========================================================================== */
-
-app.post('/api/orders', async (req, res) => {
-
-    const { user_id, total_amount, status } = req.body;
-
-    try {
-
-        const query = `
-            INSERT INTO orders
-            (user_id, total_amount, status)
-            VALUES ($1, $2, $3)
-            RETURNING *;
-        `;
-
-        const result = await pool.query(query, [
-            user_id,
-            total_amount,
-            status || 'Pending'
-        ]);
-
-        res.status(201).json({
-            message: 'Order submitted successfully!',
-            order: result.rows[0]
-        });
-
-    } catch (error) {
-
-        console.error(error);
-
-        res.status(500).json({
-            error: 'Failed to create order.'
-        });
-    }
-});
 
 app.get('/api/orders', async (req, res) => {
 
@@ -279,16 +214,24 @@ app.get('/api/orders', async (req, res) => {
 
     } catch (error) {
 
-        console.error(error);
+        console.error('ORDER FETCH ERROR:', error);
 
         res.status(500).json({
-            error: 'Failed to fetch orders.'
+            error: error.message
         });
     }
 });
 
 /* ==========================================================================
-   SERVER START
+   FRONTEND ROUTE
+   ========================================================================== */
+
+app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+/* ==========================================================================
+   START SERVER
    ========================================================================== */
 
 const PORT = process.env.PORT || 10000;
