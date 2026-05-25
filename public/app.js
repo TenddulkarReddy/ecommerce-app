@@ -1,4 +1,5 @@
-const API_URL = 'https://ecommerce-app-backend-fmcl.onrender.com/api';
+const API_URL = 'https://ecommerce-app-backend-fmcl.onrender.com';
+
 
 
 let cart = [];
