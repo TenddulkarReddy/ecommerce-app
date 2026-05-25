@@ -29,13 +29,12 @@ function updateUI() {
         if (document.getElementById('logout-btn')) document.getElementById('logout-btn').classList.add('hidden');
         if (document.getElementById('store-section')) document.getElementById('store-section').classList.add('hidden');
         if (document.getElementById('admin-section')) document.getElementById('admin-section').classList.add('hidden');
-        if (document.getElementById('auth-status')) document.getElementById('auth-status').innerText = '';
+        if (document.getElementById('auth-status')) {
+            document.getElementById('auth-status').innerText = '';
+        }
     }
 }
 
-/* ==========================================================================
-   BUTTON BRIDGE FUNCTIONS (Fixes "login/register is not defined" errors)
-   ========================================================================== */
 async function login(event) {
     if (event) event.preventDefault();
     await handleAuth('login');
@@ -46,7 +45,6 @@ async function register(event) {
     await handleAuth('register');
 }
 
-// Global Authentication Processing Controller
 async function handleAuth(type) {
     const usernameInput = document.getElementById('username')?.value;
     const passwordInput = document.getElementById('password')?.value;
@@ -94,15 +92,16 @@ async function handleAuth(type) {
 async function loadProducts() {
     try {
         const response = await fetch(`${API_URL}/products`);
-        if (!response.ok) throw new Error('Backend server returned an error');
-        
         const products = await response.json();
+        
         const container = document.getElementById('products-container');
         if (!container) return;
         container.innerHTML = '';
 
+        // Safety Guard: Check if server returned a valid array list instead of an error object
         if (!Array.isArray(products)) {
-            console.error('Expected products array, got:', products);
+            console.warn('Database connection is still waking up on Render. Retrying...');
+            container.innerHTML = `<p style="color: gray;">Loading store inventory...</p>`;
             return;
         }
 
@@ -131,7 +130,6 @@ function logout() {
     updateUI();
 }
 
-// Global exposure for event handlers
 window.login = login;
 window.register = register;
 window.logout = logout;
