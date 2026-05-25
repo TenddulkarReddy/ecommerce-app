@@ -30,9 +30,9 @@ pool.connect((err, client, release) => {
 });
 
 /* ==========================================================================
-   1. USER REGISTRATION API
+   1. USER REGISTRATION API (Handles standard and /auth paths)
    ========================================================================== */
-app.post('/api/register', async (req, res) => {
+const registerHandler = async (req, res) => {
     const { username, password, role } = req.body;
     
     if (!username || !password) {
@@ -40,7 +40,6 @@ app.post('/api/register', async (req, res) => {
     }
 
     try {
-        // Standardize registration roles to match your Supabase DB rules ('User' or 'Admin')
         let assignedRole = 'User';
         if (role && (role.toLowerCase().includes('admin') || role.toLowerCase().includes('seller'))) {
             assignedRole = 'Admin';
@@ -63,12 +62,16 @@ app.post('/api/register', async (req, res) => {
         }
         res.status(500).json({ error: 'Database error occurred during registration.' });
     }
-});
+};
+
+app.post('/api/register', registerHandler);
+app.post('/api/auth/register', registerHandler);
+
 
 /* ==========================================================================
-   2. USER LOGIN API
+   2. USER LOGIN API (Handles standard and /auth paths)
    ========================================================================== */
-app.post('/api/login', async (req, res) => {
+const loginHandler = async (req, res) => {
     const { username, password } = req.body;
 
     try {
@@ -98,7 +101,11 @@ app.post('/api/login', async (req, res) => {
         console.error(error);
         res.status(500).json({ error: 'Database server error occurred during login.' });
     }
-});
+};
+
+app.post('/api/login', loginHandler);
+app.post('/api/auth/login', loginHandler);
+
 
 /* ==========================================================================
    3. PRODUCTS & INVENTORY MANAGEMENT APIS
@@ -163,7 +170,6 @@ app.get('/api/orders', async (req, res) => {
     }
 });
 
-// Fallback configuration parameters
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
