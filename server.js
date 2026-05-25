@@ -9,22 +9,22 @@ const path = require('path');
 
 const app = express();
 
-/* ==========================================================================
+/* =========================
    MIDDLEWARE
-   ========================================================================== */
+========================= */
 
 app.use(express.json());
 app.use(cors());
 
-/* ==========================================================================
-   SERVE FRONTEND
-   ========================================================================== */
+/* =========================
+   FRONTEND STATIC FILES
+========================= */
 
 app.use(express.static(path.join(__dirname, 'public')));
 
-/* ==========================================================================
+/* =========================
    DATABASE CONNECTION
-   ========================================================================== */
+========================= */
 
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
@@ -33,19 +33,18 @@ const pool = new Pool({
     }
 });
 
-// Test Database Connection
 pool.connect()
     .then(client => {
-        console.log('🚀 Connected to Supabase PostgreSQL Database successfully!');
+        console.log('✅ Connected to Supabase PostgreSQL');
         client.release();
     })
     .catch(err => {
-        console.error('❌ Supabase Connection Failure:', err.message);
+        console.error('❌ Database Connection Error:', err.message);
     });
 
-/* ==========================================================================
-   USER REGISTRATION API
-   ========================================================================== */
+/* =========================
+   REGISTER API
+========================= */
 
 app.post('/api/register', async (req, res) => {
 
@@ -53,7 +52,7 @@ app.post('/api/register', async (req, res) => {
 
     if (!username || !password) {
         return res.status(400).json({
-            error: 'Username and password are required.'
+            error: 'Username and password required'
         });
     }
 
@@ -76,7 +75,7 @@ app.post('/api/register', async (req, res) => {
         const query = `
             INSERT INTO users (username, password, role)
             VALUES ($1, $2, $3)
-            RETURNING id, username, role;
+            RETURNING id, username, role
         `;
 
         const result = await pool.query(query, [
@@ -86,7 +85,7 @@ app.post('/api/register', async (req, res) => {
         ]);
 
         res.status(201).json({
-            message: 'User registered successfully!',
+            message: 'User registered successfully',
             user: result.rows[0]
         });
 
@@ -96,7 +95,7 @@ app.post('/api/register', async (req, res) => {
 
         if (error.code === '23505') {
             return res.status(400).json({
-                error: 'Username already exists.'
+                error: 'Username already exists'
             });
         }
 
@@ -106,9 +105,9 @@ app.post('/api/register', async (req, res) => {
     }
 });
 
-/* ==========================================================================
-   USER LOGIN API
-   ========================================================================== */
+/* =========================
+   LOGIN API
+========================= */
 
 app.post('/api/login', async (req, res) => {
 
@@ -118,14 +117,14 @@ app.post('/api/login', async (req, res) => {
 
         const query = `
             SELECT * FROM users
-            WHERE username = $1;
+            WHERE username = $1
         `;
 
         const result = await pool.query(query, [username]);
 
         if (result.rows.length === 0) {
             return res.status(400).json({
-                error: 'Invalid username or password.'
+                error: 'Invalid username or password'
             });
         }
 
@@ -138,7 +137,7 @@ app.post('/api/login', async (req, res) => {
 
         if (!validPassword) {
             return res.status(400).json({
-                error: 'Invalid username or password.'
+                error: 'Invalid username or password'
             });
         }
 
@@ -148,14 +147,14 @@ app.post('/api/login', async (req, res) => {
                 username: user.username,
                 role: user.role
             },
-            process.env.JWT_SECRET || 'fallback_secret_key',
+            process.env.JWT_SECRET,
             {
                 expiresIn: '24h'
             }
         );
 
         res.json({
-            message: 'Login successful!',
+            message: 'Login successful',
             token,
             role: user.role
         });
@@ -170,23 +169,23 @@ app.post('/api/login', async (req, res) => {
     }
 });
 
-/* ==========================================================================
+/* =========================
    PRODUCTS API
-   ========================================================================== */
+========================= */
 
 app.get('/api/products', async (req, res) => {
 
     try {
 
         const result = await pool.query(
-            'SELECT * FROM products ORDER BY id DESC;'
+            'SELECT * FROM products ORDER BY id DESC'
         );
 
         res.json(result.rows);
 
     } catch (error) {
 
-        console.error('PRODUCT FETCH ERROR:', error);
+        console.error('PRODUCT ERROR:', error);
 
         res.status(500).json({
             error: error.message
@@ -194,9 +193,9 @@ app.get('/api/products', async (req, res) => {
     }
 });
 
-/* ==========================================================================
+/* =========================
    ORDERS API
-   ========================================================================== */
+========================= */
 
 app.get('/api/orders', async (req, res) => {
 
@@ -207,14 +206,14 @@ app.get('/api/orders', async (req, res) => {
             FROM orders
             JOIN users
             ON orders.user_id = users.id
-            ORDER BY orders.created_at DESC;
+            ORDER BY orders.created_at DESC
         `);
 
         res.json(result.rows);
 
     } catch (error) {
 
-        console.error('ORDER FETCH ERROR:', error);
+        console.error('ORDER ERROR:', error);
 
         res.status(500).json({
             error: error.message
@@ -222,17 +221,17 @@ app.get('/api/orders', async (req, res) => {
     }
 });
 
-/* ==========================================================================
+/* =========================
    FRONTEND ROUTE
-   ========================================================================== */
+========================= */
 
-app.get('*', (req, res) => {
+app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-/* ==========================================================================
+/* =========================
    START SERVER
-   ========================================================================== */
+========================= */
 
 const PORT = process.env.PORT || 10000;
 
