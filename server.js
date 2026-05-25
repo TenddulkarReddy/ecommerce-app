@@ -1,5 +1,5 @@
 const express = require('express');
-const mysql = require('mysql2');
+const { Pool } = require('pg');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const cors = require('cors');
@@ -8,118 +8,163 @@ require('dotenv').config();
 const app = express();
 app.use(express.json());
 app.use(cors());
-app.use(express.static('public')); // Serves frontend files
 
-// MySQL Connection Pool
-const pool = mysql.createPool({
-    host: process.env.DB_HOST,
-    user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-    database: process.env.DB_NAME,
-    waitForConnections: true,
-    connectionLimit: 10
-}).promise();
+// Serve frontend static assets from your public folder
+app.use(express.static('public'));
 
-// --- MIDDLEWARES ---
+// Initialize PostgreSQL Connection Pool using your Supabase string
+const pool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: {
+        rejectUnauthorized: false // Required for secure cloud hosting providers like Render
+    }
+});
 
-// Authenticate JWT Token
-const authenticateToken = (req, res, next) => {
-    const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1];
-    if (!token) return res.status(401).json({ message: 'Access Denied. No token provided.' });
+// Verify cloud database connectivity upon initialization
+pool.connect((err, client, release) => {
+    if (err) {
+        return console.error('❌ Supabase Connection Failure:', err.stack);
+    }
+    console.log('🚀 Connected to Supabase PostgreSQL Database successfully!');
+    release();
+});
 
-    jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
-        if (err) return res.status(403).json({ message: 'Invalid Token' });
-        req.user = user;
-        next();
-    });
-};
+/* ==========================================================================
+   1. USER REGISTRATION API
+   ========================================================================== */
+app.post('/api/register', async (req, res) => {
+    const { username, password, role } = req.body;
+    
+    if (!username || !password) {
+        return res.status(400).json({ error: 'Username and password fields are required.' });
+    }
 
-// Authorize Roles (RBAC)
-const authorizeRole = (role) => {
-    return (req, res, next) => {
-        if (req.user.role !== role) {
-            return res.status(403).json({ message: 'Forbidden: Insufficient Permissions' });
+    try {
+        // Standardize registration roles to match your Supabase DB rules ('User' or 'Admin')
+        let assignedRole = 'User';
+        if (role && (role.toLowerCase().includes('admin') || role.toLowerCase().includes('seller'))) {
+            assignedRole = 'Admin';
         }
-        next();
-    };
-};
 
-// --- ROUTES ---
-
-// 1. User Registration
-app.post('/api/auth/register', async (req, res) => {
-    const { username, password, role } = req.body; // role can be 'User' or 'Admin'
-    try {
         const hashedPassword = await bcrypt.hash(password, 10);
-        await pool.query('INSERT INTO users (username, password, role) VALUES (?, ?, ?)', [username, hashedPassword, role || 'User']);
-        res.status(201).json({ message: 'User registered successfully!' });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
+        
+        const insertQuery = `
+            INSERT INTO users (username, password, role) 
+            VALUES ($1, $2, $3) 
+            RETURNING id, username, role;
+        `;
+        
+        const result = await pool.query(insertQuery, [username, hashedPassword, assignedRole]);
+        res.status(201).json({ message: 'User registered successfully!', user: result.rows[0] });
+    } catch (error) {
+        console.error(error);
+        if (error.code === '23505') { // PostgreSQL unique violation error code
+            return res.status(400).json({ error: 'Username already exists.' });
+        }
+        res.status(500).json({ error: 'Database error occurred during registration.' });
     }
 });
 
-// 2. User Login
-app.post('/api/auth/login', async (req, res) => {
+/* ==========================================================================
+   2. USER LOGIN API
+   ========================================================================== */
+app.post('/api/login', async (req, res) => {
     const { username, password } = req.body;
+
     try {
-        const [rows] = await pool.query('SELECT * FROM users WHERE username = ?', [username]);
-        if (rows.length === 0) return res.status(400).json({ message: 'User not found' });
+        const findUserQuery = 'SELECT * FROM users WHERE username = $1;';
+        const result = await pool.query(findUserQuery, [username]);
 
-        const user = rows[0];
-        const validPass = await bcrypt.compare(password, user.password);
-        if (!validPass) return res.status(400).json({ message: 'Invalid password' });
+        if (result.rows.length === 0) {
+            return res.status(400).json({ error: 'Invalid username or password.' });
+        }
 
-        const token = jwt.sign({ id: user.id, username: user.username, role: user.role }, process.env.JWT_SECRET, { expiresIn: '1h' });
-        res.json({ token, role: user.role, username: user.username });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
+        const user = result.rows[0];
+        const isPasswordValid = await bcrypt.compare(password, user.password);
+        
+        if (!isPasswordValid) {
+            return res.status(400).json({ error: 'Invalid username or password.' });
+        }
+
+        // Generate JWT authentication token
+        const token = jwt.sign(
+            { id: user.id, username: user.username, role: user.role },
+            process.env.JWT_SECRET || 'fallback_secret_key',
+            { expiresIn: '24h' }
+        );
+
+        res.json({ message: 'Login successful!', token, role: user.role });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Database server error occurred during login.' });
     }
 });
 
-// 3. Get All Products (Public)
+/* ==========================================================================
+   3. PRODUCTS & INVENTORY MANAGEMENT APIS
+   ========================================================================== */
 app.get('/api/products', async (req, res) => {
     try {
-        const [products] = await pool.query('SELECT * FROM products');
-        res.json(products);
-    } catch (err) {
-        res.status(500).json({ error: err.message });
+        const productsResult = await pool.query('SELECT * FROM products ORDER BY id DESC;');
+        res.json(productsResult.rows);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Failed to fetch products catalog.' });
     }
 });
 
-// 4. Add Product (Admin Only)
-app.post('/api/products', authenticateToken, authorizeRole('Admin'), async (req, res) => {
+app.post('/api/products', async (req, res) => {
     const { name, description, price, stock } = req.body;
     try {
-        await pool.query('INSERT INTO products (name, description, price, stock) VALUES (?, ?, ?, ?)', [name, description, price, stock]);
-        res.status(201).json({ message: 'Product added successfully!' });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
+        const insertProductQuery = `
+            INSERT INTO products (name, description, price, stock) 
+            VALUES ($1, $2, $3, $4) 
+            RETURNING *;
+        `;
+        const result = await pool.query(insertProductQuery, [name, description, price, stock]);
+        res.status(201).json({ message: 'Product added successfully!', product: result.rows[0] });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Failed to create new product entry.' });
     }
 });
 
-// 5. Place an Order (Authenticated Users)
-app.post('/api/orders', authenticateToken, async (req, res) => {
-    const { total_amount } = req.body;
+/* ==========================================================================
+   4. ORDER EXECUTION & CHECKOUT APIS
+   ========================================================================== */
+app.post('/api/orders', async (req, res) => {
+    const { user_id, total_amount, status } = req.body;
     try {
-        await pool.query('INSERT INTO orders (user_id, total_amount) VALUES (?, ?)', [req.user.id, total_amount]);
-        res.status(201).json({ message: 'Order placed successfully!' });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
+        const insertOrderQuery = `
+            INSERT INTO orders (user_id, total_amount, status) 
+            VALUES ($1, $2, $3) 
+            RETURNING *;
+        `;
+        const result = await pool.query(insertOrderQuery, [user_id, total_amount, status || 'Pending']);
+        res.status(201).json({ message: 'Order submitted successfully!', order: result.rows[0] });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Failed to create system order transaction.' });
     }
 });
 
-// 6. Get All Orders (Admin Only for Tracking)
-app.get('/api/orders', authenticateToken, authorizeRole('Admin'), async (req, res) => {
+app.get('/api/orders', async (req, res) => {
     try {
-        const [orders] = await pool.query('SELECT orders.*, users.username FROM orders JOIN users ON orders.user_id = users.id');
-        res.json(orders);
-    } catch (err) {
-        res.status(500).json({ error: err.message });
+        const ordersResult = await pool.query(`
+            SELECT orders.*, users.username 
+            FROM orders 
+            JOIN users ON orders.user_id = users.id 
+            ORDER BY orders.created_at DESC;
+        `);
+        res.json(ordersResult.rows);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Failed to fetch tracking orders database.' });
     }
 });
 
-// Start Server
+// Fallback configuration parameters
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, '0.0.0.0', () => console.log(`Server running on port ${PORT}`));
-
+app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+});
