@@ -138,8 +138,8 @@ app.get('/api/orders', async (req, res) => {
     }
 });
 
-/* Route to explicitly serve the index.html frontend homepage */
-app.get('*', (req, res) => {
+/* Safe, updated root fallback route to avoid Express routing crashes */
+app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
