@@ -33,12 +33,29 @@ function updateUI() {
     }
 }
 
-// Global Authentication Login Router Function
-async function handleAuth(event, type) {
-    event.preventDefault();
-    const usernameInput = document.getElementById('username').value;
-    const passwordInput = document.getElementById('password').value;
+/* ==========================================================================
+   BUTTON BRIDGE FUNCTIONS (Fixes "login/register is not defined" errors)
+   ========================================================================== */
+async function login(event) {
+    if (event) event.preventDefault();
+    await handleAuth('login');
+}
+
+async function register(event) {
+    if (event) event.preventDefault();
+    await handleAuth('register');
+}
+
+// Global Authentication Processing Controller
+async function handleAuth(type) {
+    const usernameInput = document.getElementById('username')?.value;
+    const passwordInput = document.getElementById('password')?.value;
     const roleInput = document.getElementById('role') ? document.getElementById('role').value : 'Customer / Shopper';
+
+    if (!usernameInput || !passwordInput) {
+        alert('Please fill out all fields.');
+        return;
+    }
 
     const endpoint = type === 'login' ? '/auth/login' : '/auth/register';
     
@@ -77,8 +94,9 @@ async function handleAuth(event, type) {
 async function loadProducts() {
     try {
         const response = await fetch(`${API_URL}/products`);
-        const products = await response.json();
+        if (!response.ok) throw new Error('Backend server returned an error');
         
+        const products = await response.json();
         const container = document.getElementById('products-container');
         if (!container) return;
         container.innerHTML = '';
@@ -112,3 +130,8 @@ function logout() {
     alert('Logged out successfully.');
     updateUI();
 }
+
+// Global exposure for event handlers
+window.login = login;
+window.register = register;
+window.logout = logout;
