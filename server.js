@@ -31,7 +31,7 @@ pool.connect((err, client, release) => {
 });
 
 /* ==========================================
-   1. USER REGISTRATION API (FORCED ADMIN DEFAULT)
+   1. USER REGISTRATION API
    ========================================== */
 app.post('/api/auth/register', async (req, res) => {
     const { username, password, role } = req.body;
@@ -39,9 +39,7 @@ app.post('/api/auth/register', async (req, res) => {
         return res.status(400).json({ error: 'Username and password are required.' });
     }
     try {
-        // Force EVERY single user who registers to instantly become an Admin
-        const assignedRole = 'Admin';
-        
+        const assignedRole = role || 'Admin';
         const hashedPassword = await bcrypt.hash(password, 10);
         const result = await pool.query(
             'INSERT INTO users (username, password, role) VALUES ($1, $2, $3) RETURNING id, username, role',
@@ -85,7 +83,7 @@ app.post('/api/auth/login', async (req, res) => {
 });
 
 /* ==========================================
-   3. PRODUCTS API (WITH FULL CAPABILITIES)
+   3. PRODUCTS API
    ========================================== */
 app.get('/api/products', async (req, res) => {
     try {
@@ -129,7 +127,7 @@ app.delete('/api/products/:id', async (req, res) => {
 });
 
 /* ==========================================
-   4. ORDERS API
+   4. ORDERS API (WITH LIVE UPDATE ROUTE ADDED)
    ========================================== */
 app.post('/api/orders', async (req, res) => {
     const { user_id, total_amount, status } = req.body;
@@ -148,7 +146,7 @@ app.post('/api/orders', async (req, res) => {
 app.get('/api/orders', async (req, res) => {
     try {
         const result = await pool.query(
-            'SELECT orders.*, users.username FROM orders JOIN users ON orders.user_id = users.id ORDER BY orders.created_at DESC'
+            'SELECT orders.*, users.username FROM orders JOIN users ON orders.user_id = users.id ORDER BY orders.id DESC'
         );
         res.json(result.rows);
     } catch (error) {
@@ -157,7 +155,25 @@ app.get('/api/orders', async (req, res) => {
     }
 });
 
-/* Fallback route to explicitly map and load the index.html user panel interface */
+// NEW ROUTE: UPDATE AN EXISTING ORDER STATUS 
+app.put('/api/orders/:id', async (req, res) => {
+    const { id } = req.params;
+    const { status } = req.body;
+    try {
+        const result = await pool.query(
+            'UPDATE orders SET status = $1 WHERE id = $2 RETURNING *',
+            [status, id]
+        );
+        if (result.rowCount === 0) {
+            return res.status(404).json({ error: 'Order profile row not found.' });
+        }
+        res.json({ message: 'Order status saved.', order: result.rows[0] });
+    } catch (error) {
+        console.error('ORDER UPDATE ERROR:', error);
+        res.status(500).json({ error: 'Failed to update order status details.' });
+    }
+});
+
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
