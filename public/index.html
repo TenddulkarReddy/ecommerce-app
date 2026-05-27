@@ -1,324 +1,327 @@
-require('dotenv').config();
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>E-Commerce Store Layout</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-900">
 
-const express = require('express');
-const { Pool } = require('pg');
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
-const cors = require('cors');
+    <nav class="bg-indigo-600 text-white shadow-md sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center">
+                    <span class="text-xl font-bold tracking-wider">🛍️ TechStore</span>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <span id="userStatus" class="text-sm bg-indigo-700 px-3 py-1.5 rounded-md hidden"></span>
+                    <button id="logoutBtn" onclick="logout()" class="text-sm bg-red-500 hover:bg-red-600 px-3 py-1.5 rounded-md font-medium transition hidden">Logout</button>
+                </div>
+            </div>
+        </div>
+    </nav>
 
-const app = express();
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        
+        <section id="authSection" class="max-w-md mx-auto bg-white p-8 rounded-xl shadow-md border border-gray-100 my-12">
+            <div class="flex justify-center space-x-4 mb-6 border-b pb-4">
+                <button id="toggleLogin" onclick="switchAuthMode('login')" class="text-lg font-semibold text-indigo-600 border-b-2 border-indigo-600 pb-2 focus:outline-none">Login</button>
+                <button id="toggleRegister" onclick="switchAuthMode('register')" class="text-lg font-semibold text-gray-400 pb-2 focus:outline-none">Register</button>
+            </div>
 
-/* ==========================================================================
-   MIDDLEWARE
-   ========================================================================== */
+            <div id="authAlert" class="hidden mb-4 p-3 rounded text-sm font-medium"></div>
 
-app.use(express.json());
-app.use(cors());
+            <form id="authForm" onsubmit="handleAuth(event)">
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Username</label>
+                    <input type="text" id="username" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition">
+                </div>
+                <div class="mb-6">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                    <input type="password" id="password" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition">
+                </div>
+                <div id="roleWrapper" class="mb-6 hidden">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Account Role</label>
+                    <select id="role" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition">
+                        <option value="Customer / Shopper">Customer / Shopper</option>
+                        <option value="Admin">Admin</option>
+                    </select>
+                </div>
+                <button type="submit" id="authSubmitBtn" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-lg transition shadow-sm">Sign In</button>
+            </form>
+        </section>
 
-// Serve frontend files
-app.use(express.static('public'));
+        <section id="storeSection" class="hidden space-y-12">
+            
+            <div id="adminProductPanel" class="hidden bg-white p-6 rounded-xl shadow-md border border-gray-100 max-w-2xl mx-auto">
+                <h3 class="text-lg font-bold text-gray-900 mb-4 flex items-center">🛠️ Admin Controls: Add Product</h3>
+                <form onsubmit="addProduct(event)" class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div class="sm:col-span-2">
+                        <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1">Product Name</label>
+                        <input type="text" id="pName" required class="w-full px-3 py-1.5 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                    <div class="sm:col-span-2">
+                        <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1">Description</label>
+                        <textarea id="pDesc" rows="2" required class="w-full px-3 py-1.5 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-indigo-500"></textarea>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1">Price ($)</label>
+                        <input type="number" step="0.01" id="pPrice" required class="w-full px-3 py-1.5 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1">Stock Units</label>
+                        <input type="number" id="pStock" required class="w-full px-3 py-1.5 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                    <div class="sm:col-span-2 mt-2">
+                        <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2 rounded-lg transition text-sm">Save Product to Catalog</button>
+                    </div>
+                </form>
+            </div>
 
-/* ==========================================================================
-   SUPABASE DATABASE CONNECTION
-   ========================================================================== */
+            <div>
+                <h2 class="text-2xl font-bold text-gray-900 mb-6 flex items-center">⚡ Available Hardware Products</h2>
+                <div id="productGrid" class="grid grid-cols-1 gap-y-10 gap-x-6 sm:grid-cols-2 lg:grid-cols-3 xl:gap-x-8">
+                    </div>
+            </div>
 
-const pool = new Pool({
-    connectionString: process.env.DATABASE_URL,
-    ssl:
-        process.env.NODE_ENV === 'production'
-            ? {
-                  rejectUnauthorized: false
-              }
-            : false
-});
+            <div class="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden">
+                <div class="px-6 py-4 border-b border-gray-100 bg-gray-50">
+                    <h2 class="text-lg font-bold text-gray-900">📦 Live Orders Ledger</h2>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200 text-sm text-left">
+                        <thead class="bg-gray-100 text-xs uppercase tracking-wider font-semibold text-gray-600">
+                            <tr>
+                                <th class="px-6 py-3">Order ID</th>
+                                <th class="px-6 py-3">User</th>
+                                <th class="px-6 py-3">Total Cost</th>
+                                <th class="px-6 py-3">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ordersTableBody" class="divide-y divide-gray-200">
+                            </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+    </main>
 
-// Test Database Connection
-pool.connect()
-    .then(client => {
-        console.log('🚀 Connected to Supabase PostgreSQL Database successfully!');
-        client.release();
-    })
-    .catch(err => {
-        console.error('❌ Supabase Connection Failure:', err.message);
-    });
+    <script>
+        // Automatic runtime environment resolver
+        const API_BASE = window.location.origin; 
+        let authMode = 'login';
+        let currentUser = null;
 
-/* ==========================================================================
-   USER REGISTRATION API
-   ========================================================================== */
+        // Initialize state checks on system initialization
+        document.addEventListener('DOMContentLoaded', () => {
+            const token = localStorage.getItem('token');
+            const role = localStorage.getItem('role');
+            const username = localStorage.getItem('username');
 
-const registerHandler = async (req, res) => {
-
-    const { username, password, role } = req.body;
-
-    // Validation
-    if (!username || !password) {
-        return res.status(400).json({
-            error: 'Username and password are required.'
-        });
-    }
-
-    try {
-
-        // Assign Role
-        let assignedRole = 'User';
-
-        if (
-            role &&
-            (
-                role.toLowerCase().includes('admin') ||
-                role.toLowerCase().includes('seller')
-            )
-        ) {
-            assignedRole = 'Admin';
-        }
-
-        // Hash Password
-        const hashedPassword = await bcrypt.hash(password, 10);
-
-        // Insert User
-        const query = `
-            INSERT INTO users (username, password, role)
-            VALUES ($1, $2, $3)
-            RETURNING id, username, role;
-        `;
-
-        const result = await pool.query(query, [
-            username,
-            hashedPassword,
-            assignedRole
-        ]);
-
-        res.status(201).json({
-            message: 'User registered successfully!',
-            user: result.rows[0]
-        });
-
-    } catch (error) {
-
-        console.error('REGISTER ERROR:', error);
-
-        // Duplicate Username
-        if (error.code === '23505') {
-            return res.status(400).json({
-                error: 'Username already exists.'
-            });
-        }
-
-        res.status(500).json({
-            error: error.message
-        });
-    }
-};
-
-app.post('/api/register', registerHandler);
-app.post('/api/auth/register', registerHandler);
-
-/* ==========================================================================
-   USER LOGIN API
-   ========================================================================== */
-
-const loginHandler = async (req, res) => {
-
-    const { username, password } = req.body;
-
-    try {
-
-        // Find User
-        const query = `
-            SELECT * FROM users
-            WHERE username = $1;
-        `;
-
-        const result = await pool.query(query, [username]);
-
-        // User Not Found
-        if (result.rows.length === 0) {
-            return res.status(400).json({
-                error: 'Invalid username or password.'
-            });
-        }
-
-        const user = result.rows[0];
-
-        // Compare Password
-        const validPassword = await bcrypt.compare(
-            password,
-            user.password
-        );
-
-        if (!validPassword) {
-            return res.status(400).json({
-                error: 'Invalid username or password.'
-            });
-        }
-
-        // Generate JWT Token
-        const token = jwt.sign(
-            {
-                id: user.id,
-                username: user.username,
-                role: user.role
-            },
-            process.env.JWT_SECRET || 'fallback_secret_key',
-            {
-                expiresIn: '24h'
+            if (token && username) {
+                currentUser = { token, role, username };
+                showStorefront();
             }
-        );
-
-        res.json({
-            message: 'Login successful!',
-            token,
-            role: user.role
         });
 
-    } catch (error) {
+        function switchAuthMode(mode) {
+            authMode = mode;
+            const toggleLogin = document.getElementById('toggleLogin');
+            const toggleRegister = document.getElementById('toggleRegister');
+            const roleWrapper = document.getElementById('roleWrapper');
+            const authSubmitBtn = document.getElementById('authSubmitBtn');
+            const alertBox = document.getElementById('authAlert');
+            
+            alertBox.className = 'hidden mb-4 p-3 rounded text-sm font-medium';
 
-        console.error('LOGIN ERROR:', error);
+            if (mode === 'register') {
+                toggleRegister.className = "text-lg font-semibold text-indigo-600 border-b-2 border-indigo-600 pb-2 focus:outline-none";
+                toggleLogin.className = "text-lg font-semibold text-gray-400 pb-2 focus:outline-none";
+                roleWrapper.classList.remove('hidden');
+                authSubmitBtn.innerText = 'Create Account';
+            } else {
+                toggleLogin.className = "text-lg font-semibold text-indigo-600 border-b-2 border-indigo-600 pb-2 focus:outline-none";
+                toggleRegister.className = "text-lg font-semibold text-gray-400 pb-2 focus:outline-none";
+                roleWrapper.classList.add('hidden');
+                authSubmitBtn.innerText = 'Sign In';
+            }
+        }
 
-        res.status(500).json({
-            error: error.message
-        });
-    }
-};
+        async function handleAuth(e) {
+            e.preventDefault();
+            const alertBox = document.getElementById('authAlert');
+            const userInp = document.getElementById('username').value.trim();
+            const passInp = document.getElementById('password').value;
+            const roleInp = document.getElementById('role').value;
 
-app.post('/api/login', loginHandler);
-app.post('/api/auth/login', loginHandler);
+            const endpoint = authMode === 'login' ? '/api/auth/login' : '/api/auth/register';
+            const bodyData = authMode === 'login' 
+                ? { username: userInp, password: passInp }
+                : { username: userInp, password: passInp, role: roleInp };
 
-/* ==========================================================================
-   PRODUCTS API
-   ========================================================================== */
+            try {
+                const res = await fetch(`${API_BASE}${endpoint}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(bodyData)
+                });
+                const data = await res.json();
 
-app.get('/api/products', async (req, res) => {
+                if (!res.ok) throw new Error(data.error || 'Server interaction failed.');
 
-    try {
+                if (authMode === 'login') {
+                    localStorage.setItem('token', data.token);
+                    localStorage.setItem('role', data.role);
+                    localStorage.setItem('username', userInp);
+                    currentUser = { token: data.token, role: data.role, username: userInp };
+                    showStorefront();
+                } else {
+                    alertBox.className = "mb-4 p-3 rounded text-sm font-medium bg-emerald-50 text-emerald-700 border border-emerald-200";
+                    alertBox.innerText = "Registration complete! You can now switch to Login.";
+                    document.getElementById('authForm').reset();
+                }
+            } catch (err) {
+                alertBox.className = "mb-4 p-3 rounded text-sm font-medium bg-red-50 text-red-700 border border-red-200";
+                alertBox.innerText = err.message;
+            }
+        }
 
-        const result = await pool.query(
-            'SELECT * FROM products ORDER BY id DESC;'
-        );
+        function showStorefront() {
+            document.getElementById('authSection').classList.add('hidden');
+            document.getElementById('storeSection').classList.remove('hidden');
+            
+            const statusLabel = document.getElementById('userStatus');
+            statusLabel.innerText = `👤 ${currentUser.username} (${currentUser.role})`;
+            statusLabel.classList.remove('hidden');
+            document.getElementById('logoutBtn').classList.remove('hidden');
 
-        res.json(result.rows);
+            if (currentUser.role.toLowerCase().includes('admin')) {
+                document.getElementById('adminProductPanel').classList.remove('hidden');
+            }
 
-    } catch (error) {
+            fetchProducts();
+            fetchOrders();
+        }
 
-        console.error('PRODUCT FETCH ERROR:', error);
+        async function fetchProducts() {
+            const grid = document.getElementById('productGrid');
+            try {
+                const res = await fetch(`${API_BASE}/api/products`);
+                const products = await res.json();
+                
+                if(products.length === 0) {
+                    grid.innerHTML = `<p class="text-gray-500 text-sm">No products added yet.</p>`;
+                    return;
+                }
 
-        res.status(500).json({
-            error: error.message
-        });
-    }
-});
+                grid.innerHTML = products.map(p => `
+                    <div class="group bg-white border border-gray-100 rounded-xl p-5 shadow-sm hover:shadow-md transition relative flex flex-col justify-between">
+                        <div>
+                            <div class="flex justify-between items-start mb-2">
+                                <h3 class="text-md font-bold text-gray-900">${p.name}</h3>
+                                <span class="text-indigo-600 font-bold text-md">$${parseFloat(p.price).toFixed(2)}</span>
+                            </div>
+                            <p class="text-xs text-gray-500 mb-4 line-clamp-3">${p.description}</p>
+                        </div>
+                        <div class="mt-4 pt-3 border-t border-gray-50 flex items-center justify-between">
+                            <span class="text-xs text-gray-400">In Stock: <strong class="text-gray-700">${p.stock}</strong></span>
+                            <button onclick="placeOrder(${p.id}, ${p.price})" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-semibold px-3 py-1.5 rounded-lg text-xs transition">
+                                Quick Buy
+                            </button>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (err) {
+                grid.innerHTML = `<p class="text-red-500 text-sm">Catalog failed to synchronize.</p>`;
+            }
+        }
 
-app.post('/api/products', async (req, res) => {
+        async function addProduct(e) {
+            e.preventDefault();
+            const bodyData = {
+                name: document.getElementById('pName').value.trim(),
+                description: document.getElementById('pDesc').value.trim(),
+                price: parseFloat(document.getElementById('pPrice').value),
+                stock: parseInt(document.getElementById('pStock').value)
+            };
 
-    const { name, description, price, stock } = req.body;
+            try {
+                const res = await fetch(`${API_BASE}/api/products`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(bodyData)
+                });
+                if (!res.ok) throw new Error('Failed to create new product.');
+                
+                document.getElementById('pName').value = '';
+                document.getElementById('pDesc').value = '';
+                document.getElementById('pPrice').value = '';
+                document.getElementById('pStock').value = '';
+                
+                fetchProducts();
+            } catch (err) {
+                alert(err.message);
+            }
+        }
 
-    try {
+        async function fetchOrders() {
+            const tableBody = document.getElementById('ordersTableBody');
+            try {
+                const res = await fetch(`${API_BASE}/api/orders`);
+                const orders = await res.json();
 
-        const query = `
-            INSERT INTO products
-            (name, description, price, stock)
-            VALUES ($1, $2, $3, $4)
-            RETURNING *;
-        `;
+                if(orders.length === 0) {
+                    tableBody.innerHTML = `<tr><td colspan="4" class="px-6 py-4 text-center text-gray-400 text-xs">No active order records found.</td></tr>`;
+                    return;
+                }
 
-        const result = await pool.query(query, [
-            name,
-            description,
-            price,
-            stock
-        ]);
+                tableBody.innerHTML = orders.map(o => `
+                    <tr class="hover:bg-gray-50 transition">
+                        <td class="px-6 py-4 whitespace-nowrap font-mono text-xs text-gray-500">#ORD-${o.id}</td>
+                        <td class="px-6 py-4 whitespace-nowrap font-medium text-gray-900">${o.username || 'System User'}</td>
+                        <td class="px-6 py-4 whitespace-nowrap font-semibold text-gray-900">$${parseFloat(o.total_amount).toFixed(2)}</td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-100">${o.status}</span>
+                        </td>
+                    </tr>
+                `).join('');
+            } catch (err) {
+                tableBody.innerHTML = `<tr><td colspan="4" class="px-6 py-4 text-center text-red-500 text-xs">Failed to synchronize ledger data.</td></tr>`;
+            }
+        }
 
-        res.status(201).json({
-            message: 'Product added successfully!',
-            product: result.rows[0]
-        });
+        async function placeOrder(productId, price) {
+            // Using a mockup reference ID (1) if user schema id is unmapped locally
+            const bodyData = {
+                user_id: 1, 
+                total_amount: parseFloat(price),
+                status: 'Processing'
+            };
 
-    } catch (error) {
+            try {
+                const res = await fetch(`${API_BASE}/api/orders`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(bodyData)
+                });
+                if (!res.ok) throw new Error('Order creation rejected.');
+                
+                alert('🎉 Transaction submitted successfully!');
+                fetchOrders();
+            } catch (err) {
+                alert(err.message);
+            }
+        }
 
-        console.error('PRODUCT INSERT ERROR:', error);
-
-        res.status(500).json({
-            error: error.message
-        });
-    }
-});
-
-/* ==========================================================================
-   ORDERS API
-   ========================================================================== */
-
-app.post('/api/orders', async (req, res) => {
-
-    const { user_id, total_amount, status } = req.body;
-
-    try {
-
-        const query = `
-            INSERT INTO orders
-            (user_id, total_amount, status)
-            VALUES ($1, $2, $3)
-            RETURNING *;
-        `;
-
-        const result = await pool.query(query, [
-            user_id,
-            total_amount,
-            status || 'Pending'
-        ]);
-
-        res.status(201).json({
-            message: 'Order submitted successfully!',
-            order: result.rows[0]
-        });
-
-    } catch (error) {
-
-        console.error('ORDER INSERT ERROR:', error);
-
-        res.status(500).json({
-            error: error.message
-        });
-    }
-});
-
-app.get('/api/orders', async (req, res) => {
-
-    try {
-
-        const result = await pool.query(`
-            SELECT orders.*, users.username
-            FROM orders
-            JOIN users
-            ON orders.user_id = users.id
-            ORDER BY orders.created_at DESC;
-        `);
-
-        res.json(result.rows);
-
-    } catch (error) {
-
-        console.error('ORDER FETCH ERROR:', error);
-
-        res.status(500).json({
-            error: error.message
-        });
-    }
-});
-
-/* ==========================================================================
-   DEFAULT ROUTE
-   ========================================================================== */
-
-app.get('/', (req, res) => {
-    res.send('🚀 Backend Server Running Successfully!');
-});
-
-/* ==========================================================================
-   START SERVER
-   ========================================================================== */
-
-const PORT = process.env.PORT || 10000;
-
-app.listen(PORT, () => {
-    console.log(`🚀 Server running on port ${PORT}`);
-});
+        function logout() {
+            localStorage.clear();
+            window.location.reload();
+        }
+    </script>
+</body>
+</html>
