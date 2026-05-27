@@ -85,8 +85,7 @@
 
             <div>
                 <h2 class="text-2xl font-bold text-gray-900 mb-6 flex items-center">⚡ Available Hardware Products</h2>
-                <div id="productGrid" class="grid grid-cols-1 gap-y-10 gap-x-6 sm:grid-cols-2 lg:grid-cols-3 xl:gap-x-8">
-                    </div>
+                <div id="productGrid" class="grid grid-cols-1 gap-y-10 gap-x-6 sm:grid-cols-2 lg:grid-cols-3 xl:gap-x-8"></div>
             </div>
 
             <div class="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden">
@@ -103,8 +102,7 @@
                                 <th class="px-6 py-3">Status</th>
                             </tr>
                         </thead>
-                        <tbody id="ordersTableBody" class="divide-y divide-gray-200">
-                            </tbody>
+                        <tbody id="ordersTableBody" class="divide-y divide-gray-200"></tbody>
                     </table>
                 </div>
             </div>
@@ -112,12 +110,9 @@
     </main>
 
     <script>
-        // Automatic runtime environment resolver
-        const API_BASE = window.location.origin; 
         let authMode = 'login';
         let currentUser = null;
 
-        // Initialize state checks on system initialization
         document.addEventListener('DOMContentLoaded', () => {
             const token = localStorage.getItem('token');
             const role = localStorage.getItem('role');
@@ -165,7 +160,10 @@
                 : { username: userInp, password: passInp, role: roleInp };
 
             try {
-                const res = await fetch(`${API_BASE}${endpoint}`, {
+                /* Solid URL assembly method to eliminate template string errors */
+                const targetUrl = window.location.origin + endpoint;
+
+                const res = await fetch(targetUrl, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(bodyData)
@@ -196,7 +194,7 @@
             document.getElementById('storeSection').classList.remove('hidden');
             
             const statusLabel = document.getElementById('userStatus');
-            statusLabel.innerText = `👤 ${currentUser.username} (${currentUser.role})`;
+            statusLabel.innerText = "👤 " + currentUser.username + " (" + currentUser.role + ")";
             statusLabel.classList.remove('hidden');
             document.getElementById('logoutBtn').classList.remove('hidden');
 
@@ -211,7 +209,7 @@
         async function fetchProducts() {
             const grid = document.getElementById('productGrid');
             try {
-                const res = await fetch(`${API_BASE}/api/products`);
+                const res = await fetch(window.location.origin + '/api/products');
                 const products = await res.json();
                 
                 if(products.length === 0) {
@@ -251,7 +249,7 @@
             };
 
             try {
-                const res = await fetch(`${API_BASE}/api/products`, {
+                const res = await fetch(window.location.origin + '/api/products', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(bodyData)
@@ -272,7 +270,7 @@
         async function fetchOrders() {
             const tableBody = document.getElementById('ordersTableBody');
             try {
-                const res = await fetch(`${API_BASE}/api/orders`);
+                const res = await fetch(window.location.origin + '/api/orders');
                 const orders = await res.json();
 
                 if(orders.length === 0) {
@@ -296,7 +294,6 @@
         }
 
         async function placeOrder(productId, price) {
-            // Using a mockup reference ID (1) if user schema id is unmapped locally
             const bodyData = {
                 user_id: 1, 
                 total_amount: parseFloat(price),
@@ -304,7 +301,7 @@
             };
 
             try {
-                const res = await fetch(`${API_BASE}/api/orders`, {
+                const res = await fetch(window.location.origin + '/api/orders', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(bodyData)
