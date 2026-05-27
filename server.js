@@ -1,20 +1,19 @@
-require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const { Pool } = require('pg');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const path = require('path');
-
+require('dotenv').config();
 
 const app = express();
 
-// Middleware Configurations
 app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-/* Initialize PostgreSQL Connection Pool with SSL bypass configuration */
+/* Secure database configuration instructing the pg connection pool 
+   to handle Supabase connection poolers without rejecting self-signed handshakes */
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
     ssl: {
@@ -22,7 +21,7 @@ const pool = new Pool({
     }
 });
 
-/* Test Database Connectivity immediately on startup */
+/* Test database connectivity immediately on launch */
 pool.connect((err, client, release) => {
     if (err) {
         return console.error('❌ Database Connection Error:', err.stack);
@@ -84,7 +83,7 @@ app.post('/api/auth/login', async (req, res) => {
 });
 
 /* ==========================================
-   3. PRODUCTS API
+   3. PRODUCTS API (WITH DELETE CAPABILITIES)
    ========================================== */
 app.get('/api/products', async (req, res) => {
     try {
@@ -97,16 +96,34 @@ app.get('/api/products', async (req, res) => {
 });
 
 app.post('/api/products', async (req, res) => {
-    const { name, description, price, stock } = req.body;
+    const { name, description, price, stock, image_url } = req.body;
     try {
+        const defaultImg = 'https://images.unsplash.com/photo-1531297484001-80022131f5a1?w=500&auto=format&fit=crop&q=60';
+        const finalImg = image_url || defaultImg;
+        
         const result = await pool.query(
-            'INSERT INTO products (name, description, price, stock) VALUES ($1, $2, $3, $4) RETURNING *',
-            [name, description, price, stock]
+            'INSERT INTO products (name, description, price, stock, image_url) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+            [name, description, price, stock, finalImg]
         );
         res.status(201).json({ message: 'Product added successfully!', product: result.rows[0] });
     } catch (error) {
         console.error('PRODUCT INSERT ERROR:', error);
         res.status(500).json({ error: error.message });
+    }
+});
+
+// NEW FEATURE: DELETE PRODUCT ROUTE
+app.delete('/api/products/:id', async (req, res) => {
+    const { id } = req.params;
+    try {
+        const result = await pool.query('DELETE FROM products WHERE id = $1 RETURNING *', [id]);
+        if (result.rowCount === 0) {
+            return res.status(404).json({ error: 'Product not found.' });
+        }
+        res.json({ message: 'Product deleted from inventory successfully.' });
+    } catch (error) {
+        console.error('PRODUCT DELETE ERROR:', error);
+        res.status(500).json({ error: 'Failed to delete target product.' });
     }
 });
 
@@ -139,7 +156,7 @@ app.get('/api/orders', async (req, res) => {
     }
 });
 
-/* Safe, updated root fallback route to avoid Express routing crashes */
+/* Fallback route to explicitly map and load the index.html user panel interface */
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
