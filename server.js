@@ -56,7 +56,7 @@ app.post('/api/auth/register', async (req, res) => {
 });
 
 /* ==========================================
-   2. USER LOGIN API
+   2. USER LOGIN API (UPDATED TO RETURN USER ID)
    ========================================== */
 app.post('/api/auth/login', async (req, res) => {
     const { username, password } = req.body;
@@ -75,7 +75,9 @@ app.post('/api/auth/login', async (req, res) => {
         }
         const jwtSecret = process.env.JWT_SECRET || 'fallback_secret_key';
         const token = jwt.sign({ id: user.id, username: user.username, role: user.role }, jwtSecret, { expiresIn: '24h' });
-        res.status(200).json({ message: 'Login successful!', token, role: user.role });
+        
+        // Return user.id so the frontend knows who is ordering
+        res.status(200).json({ message: 'Login successful!', token, role: user.role, id: user.id });
     } catch (error) {
         console.error('LOGIN ERROR:', error);
         res.status(500).json({ error: 'Database server error occurred during login.' });
@@ -127,7 +129,7 @@ app.delete('/api/products/:id', async (req, res) => {
 });
 
 /* ==========================================
-   4. ORDERS API (WITH LIVE UPDATE ROUTE ADDED)
+   4. ORDERS API
    ========================================== */
 app.post('/api/orders', async (req, res) => {
     const { user_id, total_amount, status } = req.body;
@@ -155,7 +157,6 @@ app.get('/api/orders', async (req, res) => {
     }
 });
 
-// NEW ROUTE: UPDATE AN EXISTING ORDER STATUS 
 app.put('/api/orders/:id', async (req, res) => {
     const { id } = req.params;
     const { status } = req.body;

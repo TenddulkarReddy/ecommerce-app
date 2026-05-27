@@ -121,9 +121,10 @@
             const token = localStorage.getItem('token');
             const role = localStorage.getItem('role');
             const username = localStorage.getItem('username');
+            const userId = localStorage.getItem('userId');
 
-            if (token && username) {
-                currentUser = { token, role, username };
+            if (token && username && userId) {
+                currentUser = { token, role, username, id: userId };
                 showStorefront();
             }
         });
@@ -178,8 +179,9 @@
                     localStorage.setItem('token', data.token);
                     localStorage.setItem('role', data.role); 
                     localStorage.setItem('username', userInp);
+                    localStorage.setItem('userId', data.id); // Save real database row identifier safely
                     
-                    currentUser = { token: data.token, role: data.role, username: userInp };
+                    currentUser = { token: data.token, role: data.role, username: userInp, id: data.id };
                     showStorefront();
                 } else {
                     alertBox.className = "mb-4 p-3 rounded text-sm font-medium bg-emerald-50 text-emerald-700 border border-emerald-200";
@@ -321,13 +323,11 @@
                 tableBody.innerHTML = orders.map(o => {
                     const currentStatus = o.status || 'Pending';
                     
-                    // Define dynamic CSS styling variables based on status context
                     let badgeColor = 'bg-amber-50 text-amber-700 border-amber-100';
                     if (currentStatus === 'Processing') badgeColor = 'bg-blue-50 text-blue-700 border-blue-100';
                     if (currentStatus === 'Shipped') badgeColor = 'bg-indigo-50 text-indigo-700 border-indigo-100';
                     if (currentStatus === 'Delivered') badgeColor = 'bg-emerald-50 text-emerald-700 border-emerald-100';
 
-                    // If user is Admin, render an interactive dropdown picker row cell
                     let statusHtml = '';
                     if (isAdmin) {
                         statusHtml = `
@@ -356,7 +356,6 @@
             }
         }
 
-        // NEW FEATURE: SAVE THE NEW CHOSEN DROPDOWN STATUS VALUE INTO SUPABASE
         async function updateOrderStatus(orderId, newStatus) {
             try {
                 const res = await fetch(window.location.origin + `/api/orders/${orderId}`, {
@@ -371,11 +370,17 @@
             }
         }
 
+        // DYNAMIC FEATURE: SUBMITS WITH ACTUAL CURRENT LOGGED-IN ACCOUNT ID
         async function placeOrder(productId, price) {
+            if (!currentUser || !currentUser.id) {
+                alert('Session expired. Please log in again.');
+                return logout();
+            }
+
             const bodyData = {
-                user_id: 1, 
+                user_id: parseInt(currentUser.id), // Dynamically maps out the user ID instead of '1'
                 total_amount: parseFloat(price),
-                status: 'Pending' // Set clean starting baseline state instead of hardcoded processing
+                status: 'Pending' 
             };
 
             try {
