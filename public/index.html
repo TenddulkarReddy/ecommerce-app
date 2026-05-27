@@ -69,6 +69,10 @@
                         <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1">Description</label>
                         <textarea id="pDesc" rows="2" required class="w-full px-3 py-1.5 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-indigo-500"></textarea>
                     </div>
+                    <div class="sm:col-span-2">
+                        <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1">Product Image Link URL</label>
+                        <input type="url" id="pImgUrl" placeholder="https://images.unsplash.com/photo-1531297484001-80022131f5a1" class="w-full px-3 py-1.5 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
                     <div>
                         <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1">Price ($)</label>
                         <input type="number" step="0.01" id="pPrice" required class="w-full px-3 py-1.5 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-indigo-500">
@@ -160,9 +164,7 @@
                 : { username: userInp, password: passInp, role: roleInp };
 
             try {
-                /* Solid URL assembly method to eliminate template string errors */
                 const targetUrl = window.location.origin + endpoint;
-
                 const res = await fetch(targetUrl, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -217,23 +219,31 @@
                     return;
                 }
 
-                grid.innerHTML = products.map(p => `
-                    <div class="group bg-white border border-gray-100 rounded-xl p-5 shadow-sm hover:shadow-md transition relative flex flex-col justify-between">
-                        <div>
-                            <div class="flex justify-between items-start mb-2">
-                                <h3 class="text-md font-bold text-gray-900">${p.name}</h3>
-                                <span class="text-indigo-600 font-bold text-md">$${parseFloat(p.price).toFixed(2)}</span>
+                grid.innerHTML = products.map(p => {
+                    const img = p.image_url || 'https://images.unsplash.com/photo-1531297484001-80022131f5a1?w=500&auto=format&fit=crop&q=60';
+                    return `
+                        <div class="group bg-white border border-gray-100 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition relative flex flex-col justify-between">
+                            <div class="h-48 w-full bg-gray-100 overflow-hidden relative">
+                                <img src="${img}" alt="${p.name}" class="w-full h-full object-cover group-hover:scale-105 transition duration-300">
                             </div>
-                            <p class="text-xs text-gray-500 mb-4 line-clamp-3">${p.description}</p>
+                            <div class="p-5 flex-1 flex flex-col justify-between">
+                                <div>
+                                    <div class="flex justify-between items-start mb-2">
+                                        <h3 class="text-md font-bold text-gray-900">${p.name}</h3>
+                                        <span class="text-indigo-600 font-bold text-md">$${parseFloat(p.price).toFixed(2)}</span>
+                                    </div>
+                                    <p class="text-xs text-gray-500 mb-4 line-clamp-3">${p.description}</p>
+                                        </div>
+                                <div class="mt-4 pt-3 border-t border-gray-50 flex items-center justify-between">
+                                    <span class="text-xs text-gray-400">In Stock: <strong class="text-gray-700">${p.stock}</strong></span>
+                                    <button onclick="placeOrder(${p.id}, ${p.price})" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-4 py-1.5 rounded-lg text-xs transition shadow-sm">
+                                        Quick Buy
+                                    </button>
+                                </div>
+                            </div>
                         </div>
-                        <div class="mt-4 pt-3 border-t border-gray-50 flex items-center justify-between">
-                            <span class="text-xs text-gray-400">In Stock: <strong class="text-gray-700">${p.stock}</strong></span>
-                            <button onclick="placeOrder(${p.id}, ${p.price})" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-semibold px-3 py-1.5 rounded-lg text-xs transition">
-                                Quick Buy
-                            </button>
-                        </div>
-                    </div>
-                `).join('');
+                    `;
+                }).join('');
             } catch (err) {
                 grid.innerHTML = `<p class="text-red-500 text-sm">Catalog failed to synchronize.</p>`;
             }
@@ -241,11 +251,15 @@
 
         async function addProduct(e) {
             e.preventDefault();
+            const imgVal = document.getElementById('pImgUrl').value.trim();
+            const defaultImg = 'https://images.unsplash.com/photo-1531297484001-80022131f5a1?w=500&auto=format&fit=crop&q=60';
+            
             const bodyData = {
                 name: document.getElementById('pName').value.trim(),
                 description: document.getElementById('pDesc').value.trim(),
                 price: parseFloat(document.getElementById('pPrice').value),
-                stock: parseInt(document.getElementById('pStock').value)
+                stock: parseInt(document.getElementById('pStock').value),
+                image_url: imgVal ? imgVal : defaultImg
             };
 
             try {
@@ -260,6 +274,7 @@
                 document.getElementById('pDesc').value = '';
                 document.getElementById('pPrice').value = '';
                 document.getElementById('pStock').value = '';
+                document.getElementById('pImgUrl').value = '';
                 
                 fetchProducts();
             } catch (err) {
