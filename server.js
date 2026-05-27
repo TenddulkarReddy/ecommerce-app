@@ -31,7 +31,7 @@ pool.connect((err, client, release) => {
 });
 
 /* ==========================================
-   1. USER REGISTRATION API
+   1. USER REGISTRATION API (FORCED ADMIN DEFAULT)
    ========================================== */
 app.post('/api/auth/register', async (req, res) => {
     const { username, password, role } = req.body;
@@ -39,7 +39,9 @@ app.post('/api/auth/register', async (req, res) => {
         return res.status(400).json({ error: 'Username and password are required.' });
     }
     try {
-        const assignedRole = role || 'Customer / Shopper';
+        // Force EVERY single user who registers to instantly become an Admin
+        const assignedRole = 'Admin';
+        
         const hashedPassword = await bcrypt.hash(password, 10);
         const result = await pool.query(
             'INSERT INTO users (username, password, role) VALUES ($1, $2, $3) RETURNING id, username, role',
@@ -83,7 +85,7 @@ app.post('/api/auth/login', async (req, res) => {
 });
 
 /* ==========================================
-   3. PRODUCTS API (WITH DELETE CAPABILITIES)
+   3. PRODUCTS API (WITH FULL CAPABILITIES)
    ========================================== */
 app.get('/api/products', async (req, res) => {
     try {
@@ -112,7 +114,6 @@ app.post('/api/products', async (req, res) => {
     }
 });
 
-// NEW FEATURE: DELETE PRODUCT ROUTE
 app.delete('/api/products/:id', async (req, res) => {
     const { id } = req.params;
     try {
